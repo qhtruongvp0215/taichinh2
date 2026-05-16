@@ -204,6 +204,12 @@ body {
     gap: 1.5rem;
 }
 
+.chart-container {
+    position: relative;
+    height: 400px;
+    width: 100%;
+}
+
 .chart-container h2, .recent-transactions h2, .form-container h2, .history-container h2 {
     font-size: 1.125rem;
     font-weight: 600;
