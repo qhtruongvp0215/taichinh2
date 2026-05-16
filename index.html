@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quản Lý Tài Chính Gia Đình</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="styles.css?v=3">
+</head>
+
+<body>
+    <!-- App layout -->
+    <div class="app-container">
+        <!-- Sidebar / Navigation -->
+        <nav class="sidebar">
+            <div class="logo">
+                <i class="fa-solid fa-wallet"></i>
+                <span>FinFamily</span>
+            </div>
+            <ul class="nav-links">
+                <li class="active" data-tab="dashboard"><i class="fa-solid fa-chart-pie"></i> Tổng quan</li>
+                <li data-tab="income"><i class="fa-solid fa-arrow-trend-up"></i> Thu tiền</li>
+                <li data-tab="expense"><i class="fa-solid fa-arrow-trend-down"></i> Chi tiền</li>
+                <li data-tab="reports"><i class="fa-solid fa-chart-line"></i> Báo cáo</li>
+            </ul>
+        </nav>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <header class="top-header">
+                <h1 id="page-title">Tổng quan</h1>
+                <div class="user-profile">
+                    <img src="https://ui-avatars.com/api/?name=Gia+Đình&background=6366f1&color=fff" alt="User">
+                </div>
+            </header>
+
+            <div class="content-wrapper">
+                <!-- Dashboard Tab -->
+                <section id="dashboard" class="tab-content active">
+                    <div class="summary-cards">
+                        <div class="card balance-card">
+                            <div class="card-icon"><i class="fa-solid fa-scale-balanced"></i></div>
+                            <div class="card-info">
+                                <h3>Tổng số dư</h3>
+                                <p id="total-balance" class="amount">0 ₫</p>
+                            </div>
+                        </div>
+                        <div class="card income-card">
+                            <div class="card-icon"><i class="fa-solid fa-arrow-trend-up"></i></div>
+                            <div class="card-info">
+                                <h3>Tổng thu (tháng này)</h3>
+                                <p id="total-income" class="amount">0 ₫</p>
+                            </div>
+                        </div>
+                        <div class="card expense-card">
+                            <div class="card-icon"><i class="fa-solid fa-arrow-trend-down"></i></div>
+                            <div class="card-info">
+                                <h3>Tổng chi (tháng này)</h3>
+                                <p id="total-expense" class="amount">0 ₫</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="dashboard-grid">
+                        <div class="chart-container card">
+                            <h2>Tổng quan thu chi</h2>
+                            <canvas id="overviewChart"></canvas>
+                        </div>
+                        <div class="recent-transactions card">
+                            <div class="card-header">
+                                <h2>Giao dịch gần đây</h2>
+                            </div>
+                            <ul id="recent-transaction-list" class="transaction-list">
+                                <!-- Transactions will be injected here -->
+                            </ul>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Income Tab -->
+                <section id="income" class="tab-content">
+                    <div class="transactions-layout">
+                        <div class="form-container card">
+                            <h2>Thêm Khoản Thu</h2>
+                            <form id="income-form">
+                                <div class="form-group">
+                                    <label for="income-amount">Số tiền</label>
+                                    <input type="text" inputmode="numeric" id="income-amount" placeholder="VD: 500,000"
+                                        required>
+                                </div>
+
+                                <div class="form-group">
+                                    <label for="income-category">Danh mục</label>
+                                    <select id="income-category" required>
+                                        <!-- Populated dynamically -->
+                                    </select>
+                                </div>
+
+                                <div class="form-group">
+                                    <label for="income-date">Ngày giao dịch</label>
+                                    <input type="date" id="income-date" required>
+                                </div>
+
+                                <div class="form-group">
+                                    <label for="income-note">Ghi chú (Tùy chọn)</label>
+                                    <input type="text" id="income-note" placeholder="VD: Lương tháng 5">
+                                </div>
+
+                                <button type="submit" class="btn-primary"
+                                    style="background-color: var(--color-income);">Lưu Khoản Thu</button>
+                            </form>
+                        </div>
+
+                        <div class="history-container card">
+                            <div class="filter-bar">
+                                <h2>Lịch sử Thu Tiền</h2>
+                                <select id="income-filter-month">
+                                    <option value="all">Tất cả các tháng</option>
+                                </select>
+                            </div>
+                            <div class="table-responsive">
+                                <table class="transaction-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Ngày</th>
+                                            <th>Danh mục</th>
+                                            <th>Ghi chú</th>
+                                            <th class="text-right">Số tiền</th>
+                                            <th>Thao tác</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="income-transaction-list">
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Expense Tab -->
+                <section id="expense" class="tab-content">
+                    <div class="transactions-layout">
+                        <div class="form-container card">
+                            <h2>Thêm Khoản Chi</h2>
+                            <form id="expense-form">
+                                <div class="form-group">
+                                    <label for="expense-amount">Số tiền</label>
+                                    <input type="text" inputmode="numeric" id="expense-amount" placeholder="VD: 50,000"
+                                        required>
+                                </div>
+
+                                <div class="form-group">
+                                    <label for="expense-category">Danh mục</label>
+                                    <select id="expense-category" required>
+                                        <!-- Populated dynamically -->
+                                    </select>
+                                </div>
+
+                                <div class="form-group">
+                                    <label for="expense-date">Ngày giao dịch</label>
+                                    <input type="date" id="expense-date" required>
+                                </div>
+
+                                <div class="form-group">
+                                    <label for="expense-note">Ghi chú (Tùy chọn)</label>
+                                    <input type="text" id="expense-note" placeholder="VD: Mua thức ăn tối">
+                                </div>
+
+                                <button type="submit" class="btn-primary"
+                                    style="background-color: var(--color-expense);">Lưu Khoản Chi</button>
+                            </form>
+                        </div>
+
+                        <div class="history-container card">
+                            <div class="filter-bar">
+                                <h2>Lịch sử Chi Tiền</h2>
+                                <select id="expense-filter-month">
+                                    <option value="all">Tất cả các tháng</option>
+                                </select>
+                            </div>
+                            <div class="table-responsive">
+                                <table class="transaction-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Ngày</th>
+                                            <th>Danh mục</th>
+                                            <th>Ghi chú</th>
+                                            <th class="text-right">Số tiền</th>
+                                            <th>Thao tác</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="expense-transaction-list">
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Reports Tab -->
+                <section id="reports" class="tab-content">
+                    <!-- Login Form -->
+                    <div id="reports-login-container" class="form-container card"
+                        style="max-width: 400px; margin: 2rem auto;">
+                        <h2 style="text-align: center; margin-bottom: 1.5rem;"><i class="fa-solid fa-lock"
+                                style="margin-right: 8px; color: var(--text-muted);"></i>Xác thực</h2>
+                        <form id="reports-login-form">
+                            <div class="form-group">
+                                <label for="login-username">Tên tài khoản</label>
+                                <input type="text" id="login-username" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="login-password">Mật khẩu</label>
+                                <input type="password" id="login-password" required>
+                            </div>
+                            <p id="login-error"
+                                style="color: var(--color-expense); font-size: 0.875rem; display: none; margin-bottom: 1rem;">
+                                Tài khoản hoặc mật khẩu không đúng!</p>
+                            <button type="submit" class="btn-primary">Đăng Nhập</button>
+                        </form>
+                    </div>
+
+                    <!-- Actual Reports Content -->
+                    <div id="reports-content-container" style="display: none;">
+                        <div class="reports-header card">
+                            <h2>Báo Cáo Phân Tích</h2>
+                            <input type="month" id="report-month-filter">
+                        </div>
+                        <div class="reports-grid">
+                            <div class="chart-container card">
+                                <h2>Cơ cấu chi tiêu</h2>
+                                <canvas id="expenseCategoryChart"></canvas>
+                            </div>
+                            <div class="chart-container card">
+                                <h2>Cơ cấu thu nhập</h2>
+                                <canvas id="incomeCategoryChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </main>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="app.js?v=3"></script>
+</body>
+
+</html>
