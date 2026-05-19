@@ -286,12 +286,18 @@ const updateMonthFilters = () => {
 
 // Biểu đồ
 const initCharts = () => {
+    // Đăng ký plugin hiển thị nhãn số liệu trực tiếp trên biểu đồ
+    Chart.register(ChartDataLabels);
+
     const commonOptions = {
         responsive: true,
         maintainAspectRatio: false,
         plugins: {
             legend: {
                 labels: { color: '#f8fafc' }
+            },
+            datalabels: {
+                display: false // Ẩn mặc định cho các biểu đồ khác (doughnut)
             }
         }
     };
@@ -305,6 +311,23 @@ const initCharts = () => {
                 ...commonOptions,
                 plugins: {
                     ...commonOptions.plugins,
+                    datalabels: {
+                        display: true,
+                        anchor: 'end',
+                        align: 'top',
+                        color: '#f8fafc',
+                        font: {
+                            weight: 'bold',
+                            size: 11
+                        },
+                        formatter: function(value) {
+                            if (value === 0) return '';
+                            if (value >= 1000000) {
+                                return (value / 1000000) + 'M';
+                            }
+                            return new Intl.NumberFormat('vi-VN').format(value);
+                        }
+                    },
                     tooltip: {
                         callbacks: {
                             label: function(context) {
@@ -327,6 +350,7 @@ const initCharts = () => {
                 },
                 scales: {
                     y: {
+                        grace: '10%', // Thêm khoảng trống ở đỉnh để nhãn không bị đè/cắt
                         ticks: {
                             color: '#94a3b8',
                             callback: function(value) {
