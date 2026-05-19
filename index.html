@@ -36,8 +36,13 @@
         <main class="main-content">
             <header class="top-header">
                 <h1 id="page-title">Tổng quan</h1>
-                <div class="user-profile">
-                    <img src="https://ui-avatars.com/api/?name=Gia+Đình&background=6366f1&color=fff" alt="User">
+                <div class="header-actions">
+                    <button id="btn-share" class="btn-share" title="Chia sẻ dữ liệu">
+                        <i class="fa-solid fa-share-nodes"></i> Chia sẻ
+                    </button>
+                    <div class="user-profile">
+                        <img src="https://ui-avatars.com/api/?name=Gia+Đình&background=6366f1&color=fff" alt="User">
+                    </div>
                 </div>
             </header>
 
@@ -250,6 +255,10 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Firebase SDK Compat -->
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-analytics-compat.js"></script>
     <script src="app.js?v=3"></script>
 </body>
 

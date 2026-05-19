@@ -1,3 +1,19 @@
+// Firebase configuration
+const firebaseConfig = {
+  apiKey: "AIzaSyAIRBgoC_vl3RE6pQH7V8Ep1rL8umCXXXo",
+  authDomain: "taichinhdemo2.firebaseapp.com",
+  projectId: "taichinhdemo2",
+  storageBucket: "taichinhdemo2.firebasestorage.app",
+  messagingSenderId: "852100070490",
+  appId: "1:852100070490:web:9182a4855b820696a56c63",
+  measurementId: "G-Q8NXGMNLQX"
+};
+
+// Initialize Firebase
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+const analytics = firebase.analytics();
+
 // Cấu hình ban đầu
 const CATEGORIES = {
     expense: [
@@ -20,7 +36,7 @@ const CATEGORIES = {
 };
 
 // Khởi tạo state
-let transactions = JSON.parse(localStorage.getItem('fin_transactions')) || [];
+let transactions = [];
 let currentTab = 'dashboard';
 let charts = {}; // Lưu trữ instance của Chart.js
 let isReportsAuthenticated = false; // Trạng thái đăng nhập Báo cáo
@@ -166,9 +182,14 @@ const renderTransactionTables = () => {
 // Xóa giao dịch
 window.deleteTransaction = (id) => {
     if (confirm('Bạn có chắc chắn muốn xóa giao dịch này?')) {
-        transactions = transactions.filter(t => t.id !== id);
-        saveData();
-        updateAllViews();
+        db.collection('transactions').doc(id).delete()
+            .then(() => {
+                console.log("Đã xóa giao dịch khỏi Firestore:", id);
+            })
+            .catch(error => {
+                console.error("Lỗi khi xóa giao dịch:", error);
+                alert("Lỗi khi xóa giao dịch: " + error.message);
+            });
     }
 };
 
@@ -336,9 +357,28 @@ const updateCategorySelect = (type, selectId) => {
     });
 };
 
-// Lưu dữ liệu
-const saveData = () => {
-    localStorage.setItem('fin_transactions', JSON.stringify(transactions));
+// Thay thế toàn bộ dữ liệu trên Firestore bằng bộ dữ liệu mới (Dành cho việc import share link)
+const replaceFirestoreData = async (newTransactions) => {
+    try {
+        const snapshot = await db.collection('transactions').get();
+        const batch = db.batch();
+        
+        snapshot.forEach(doc => {
+            batch.delete(doc.ref);
+        });
+        
+        newTransactions.forEach(tx => {
+            const txId = tx.id || Date.now().toString();
+            const docRef = db.collection('transactions').doc(txId);
+            batch.set(docRef, { ...tx, id: txId });
+        });
+        
+        await batch.commit();
+        alert('Đã tải dữ liệu chia sẻ thành công!');
+    } catch (error) {
+        console.error("Lỗi thay thế dữ liệu từ link chia sẻ:", error);
+        alert("Lỗi khi lưu dữ liệu chia sẻ: " + error.message);
+    }
 };
 
 // Cập nhật tất cả View
@@ -348,6 +388,45 @@ const updateAllViews = () => {
     updateMonthFilters();
     renderTransactionTables();
     updateCharts();
+};
+
+// Đồng bộ dữ liệu real-time từ Firestore
+const initFirestoreSync = () => {
+    db.collection('transactions').orderBy('date', 'desc').onSnapshot((snapshot) => {
+        const fetchedTransactions = [];
+        snapshot.forEach(doc => {
+            fetchedTransactions.push(doc.data());
+        });
+        
+        transactions = fetchedTransactions;
+        updateAllViews();
+    }, (error) => {
+        console.error("Lỗi khi đồng bộ từ Firestore:", error);
+    });
+};
+
+// Tự động chuyển đổi dữ liệu từ localStorage lên Firestore (nếu có)
+const migrateLocalStorageToFirestore = async () => {
+    const localData = JSON.parse(localStorage.getItem('fin_transactions')) || [];
+    if (localData.length > 0) {
+        try {
+            const snapshot = await db.collection('transactions').get();
+            if (snapshot.empty) {
+                console.log("Phát hiện dữ liệu local. Đang đồng bộ lên Firestore...");
+                const batch = db.batch();
+                localData.forEach(tx => {
+                    const txId = tx.id || Date.now().toString();
+                    const docRef = db.collection('transactions').doc(txId);
+                    batch.set(docRef, { ...tx, id: txId });
+                });
+                await batch.commit();
+                console.log("Đồng bộ dữ liệu local lên Firestore thành công!");
+            }
+            localStorage.removeItem('fin_transactions');
+        } catch (error) {
+            console.error("Lỗi khi di chuyển dữ liệu localStorage lên Firestore:", error);
+        }
+    }
 };
 
 // Events
@@ -389,12 +468,16 @@ document.addEventListener('DOMContentLoaded', () => {
                 date: document.getElementById('income-date').value,
                 note: document.getElementById('income-note').value
             };
-            transactions.push(newTx);
-            saveData();
-            document.getElementById('income-amount').value = '';
-            document.getElementById('income-note').value = '';
-            updateAllViews();
-            alert('Đã thêm khoản thu thành công!');
+            db.collection('transactions').doc(newTx.id).set(newTx)
+                .then(() => {
+                    document.getElementById('income-amount').value = '';
+                    document.getElementById('income-note').value = '';
+                    alert('Đã thêm khoản thu thành công!');
+                })
+                .catch(error => {
+                    console.error("Lỗi thêm khoản thu:", error);
+                    alert("Lỗi thêm khoản thu: " + error.message);
+                });
         });
     }
 
@@ -411,12 +494,16 @@ document.addEventListener('DOMContentLoaded', () => {
                 date: document.getElementById('expense-date').value,
                 note: document.getElementById('expense-note').value
             };
-            transactions.push(newTx);
-            saveData();
-            document.getElementById('expense-amount').value = '';
-            document.getElementById('expense-note').value = '';
-            updateAllViews();
-            alert('Đã thêm khoản chi thành công!');
+            db.collection('transactions').doc(newTx.id).set(newTx)
+                .then(() => {
+                    document.getElementById('expense-amount').value = '';
+                    document.getElementById('expense-note').value = '';
+                    alert('Đã thêm khoản chi thành công!');
+                })
+                .catch(error => {
+                    console.error("Lỗi thêm khoản chi:", error);
+                    alert("Lỗi thêm khoản chi: " + error.message);
+                });
         });
     }
 
@@ -449,7 +536,62 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    // Kiểm tra dữ liệu được chia sẻ từ URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const sharedData = urlParams.get('shareData');
+    if (sharedData) {
+        try {
+            const decodedStr = decodeURIComponent(escape(atob(sharedData)));
+            const importedTransactions = JSON.parse(decodedStr);
+            
+            if (Array.isArray(importedTransactions) && importedTransactions.length > 0) {
+                if (confirm('Bạn có muốn tải dữ liệu được chia sẻ từ liên kết này không? Dữ liệu hiện tại sẽ bị thay thế.')) {
+                    replaceFirestoreData(importedTransactions);
+                }
+            }
+            // Xóa tham số khỏi URL
+            window.history.replaceState({}, document.title, window.location.pathname);
+        } catch (e) {
+            console.error("Lỗi đọc dữ liệu chia sẻ:", e);
+            alert('Dữ liệu chia sẻ không hợp lệ hoặc bị lỗi!');
+            window.history.replaceState({}, document.title, window.location.pathname);
+        }
+    }
+
+    // Xử lý nút Chia sẻ
+    const btnShare = document.getElementById('btn-share');
+    if (btnShare) {
+        btnShare.addEventListener('click', () => {
+            if (transactions.length === 0) {
+                alert('Không có dữ liệu để chia sẻ!');
+                return;
+            }
+            try {
+                const jsonStr = JSON.stringify(transactions);
+                const base64Str = btoa(unescape(encodeURIComponent(jsonStr)));
+                
+                const shareUrl = new URL(window.location.href);
+                shareUrl.searchParams.set('shareData', base64Str);
+                
+                navigator.clipboard.writeText(shareUrl.toString()).then(() => {
+                    alert('Đã sao chép liên kết chia sẻ! Bạn có thể dán (Ctrl+V) gửi cho người khác.');
+                }).catch(err => {
+                    prompt('Sao chép liên kết chia sẻ dưới đây:', shareUrl.toString());
+                });
+            } catch (error) {
+                console.error("Lỗi khi tạo link chia sẻ:", error);
+                alert('Có lỗi xảy ra khi tạo liên kết chia sẻ. Dữ liệu có thể quá lớn.');
+            }
+        });
+    }
+
     // Khởi tạo
     initCharts();
-    updateAllViews();
+    
+    // Di chuyển dữ liệu cũ (nếu có) và bắt đầu đồng bộ Firestore
+    migrateLocalStorageToFirestore()
+        .catch(err => console.error("Lỗi di chuyển dữ liệu:", err))
+        .finally(() => {
+            initFirestoreSync();
+        });
 });

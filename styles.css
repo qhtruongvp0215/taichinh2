@@ -139,6 +139,33 @@ body {
     font-weight: 600;
 }
 
+.header-actions {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.btn-share {
+    background-color: rgba(99, 102, 241, 0.1);
+    color: var(--accent-primary);
+    border: 1px solid var(--accent-primary);
+    padding: 0.5rem 1rem;
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    font-weight: 500;
+    font-family: inherit;
+    font-size: 0.875rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    transition: all 0.2s ease;
+}
+
+.btn-share:hover {
+    background-color: var(--accent-primary);
+    color: white;
+}
+
 .user-profile img {
     width: 40px;
     height: 40px;
