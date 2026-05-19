@@ -303,8 +303,42 @@ const initCharts = () => {
             data: { labels: [], datasets: [] },
             options: {
                 ...commonOptions,
+                plugins: {
+                    ...commonOptions.plugins,
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                let label = context.dataset.label || '';
+                                if (label) {
+                                    label += ': ';
+                                }
+                                if (context.parsed.y !== null) {
+                                    const val = context.parsed.y;
+                                    if (val >= 1000000) {
+                                        label += (val / 1000000) + 'M ₫';
+                                    } else {
+                                        label += new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(val);
+                                    }
+                                }
+                                return label;
+                            }
+                        }
+                    }
+                },
                 scales: {
-                    y: { ticks: { color: '#94a3b8' }, grid: { color: '#334155' } },
+                    y: {
+                        ticks: {
+                            color: '#94a3b8',
+                            callback: function(value) {
+                                if (value === 0) return '0';
+                                if (value >= 1000000) {
+                                    return (value / 1000000) + 'M';
+                                }
+                                return value;
+                            }
+                        },
+                        grid: { color: '#334155' }
+                    },
                     x: { ticks: { color: '#94a3b8' }, grid: { display: false } }
                 }
             }
