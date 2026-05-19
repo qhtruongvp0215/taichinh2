@@ -277,7 +277,12 @@
                     <div id="reports-content-container" style="display: none;">
                         <div class="reports-header card">
                             <h2>Báo Cáo Phân Tích</h2>
-                            <input type="month" id="report-month-filter">
+                            <div class="reports-header-actions" style="display: flex; gap: 0.75rem; align-items: center;">
+                                <input type="month" id="report-month-filter">
+                                <button id="btn-export-excel" class="btn-primary" style="background-color: var(--accent-primary); display: flex; align-items: center; gap: 0.5rem; white-space: nowrap;">
+                                    <i class="fa-solid fa-file-excel"></i> Xuất Excel
+                                </button>
+                            </div>
                         </div>
                         <div class="reports-grid">
                             <div class="chart-container card">
@@ -300,6 +305,8 @@
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-analytics-compat.js"></script>
+    <!-- SheetJS to export Excel -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script src="app.js?v=3"></script>
 </body>
 

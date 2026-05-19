@@ -498,6 +498,111 @@ const migrateLocalStorageToFirestore = async () => {
     }
 };
 
+// Xuất báo cáo Excel
+const exportToExcel = () => {
+    const filterVal = document.getElementById('report-month-filter').value; // YYYY-MM
+    if (!filterVal) {
+        alert('Vui lòng chọn tháng báo cáo để xuất!');
+        return;
+    }
+    
+    const [year, month] = filterVal.split('-');
+    
+    // Lọc giao dịch trong tháng
+    const filteredTxs = transactions.filter(t => t.date.substring(0, 7) === filterVal)
+        .sort((a, b) => new Date(a.date) - new Date(b.date));
+        
+    if (filteredTxs.length === 0) {
+        alert(`Không có giao dịch nào trong tháng ${month}/${year} để xuất báo cáo!`);
+        return;
+    }
+        
+    // Tính toán chỉ số của tháng
+    const summary = calculateSummary(filterVal);
+    
+    // Sheet 1: Tổng Quan (Summary)
+    const summaryData = [
+        ["BÁO CÁO TÀI CHÍNH THÁNG " + month + "/" + year],
+        [],
+        ["Chỉ Số Tổng Quan", "Số Tiền (VND)"],
+        ["Tổng Thu Nhập", summary.monthIncome],
+        ["Tổng Chi Tiêu", summary.monthExpense],
+        ["Thặng Dư (Số Dư)", summary.monthIncome - summary.monthExpense],
+        [],
+        ["PHÂN TÍCH CHI TIẾT THEO DANH MỤC"],
+        ["Loại Giao Dịch", "Danh Mục", "Số Tiền (VND)"]
+    ];
+    
+    // Chi tiết danh mục Thu
+    let hasIncomeCat = false;
+    CATEGORIES.income.forEach(cat => {
+        const amt = filteredTxs.filter(t => t.type === 'income' && t.category === cat.id)
+            .reduce((sum, t) => sum + t.amount, 0);
+        if (amt > 0) {
+            summaryData.push(["Thu Nhập", cat.name, amt]);
+            hasIncomeCat = true;
+        }
+    });
+    if (!hasIncomeCat) {
+        summaryData.push(["Thu Nhập", "(Không có)", 0]);
+    }
+    
+    // Chi tiết danh mục Chi
+    let hasExpenseCat = false;
+    CATEGORIES.expense.forEach(cat => {
+        const amt = filteredTxs.filter(t => t.type === 'expense' && t.category === cat.id)
+            .reduce((sum, t) => sum + t.amount, 0);
+        if (amt > 0) {
+            summaryData.push(["Chi Tiêu", cat.name, amt]);
+            hasExpenseCat = true;
+        }
+    });
+    if (!hasExpenseCat) {
+        summaryData.push(["Chi Tiêu", "(Không có)", 0]);
+    }
+    
+    // Sheet 2: Danh Sách Giao Dịch (Detail Transactions)
+    const detailHeaders = ["Ngày Giao Dịch", "Loại Giao Dịch", "Danh Mục", "Số Tiền (VND)", "Ghi Chú"];
+    const detailData = [
+        ["DANH SÁCH CHI TIẾT GIAO DỊCH - THÁNG " + month + "/" + year],
+        [],
+        detailHeaders
+    ];
+    
+    filteredTxs.forEach(t => {
+        detailData.push([
+            t.date,
+            t.type === 'income' ? 'Thu Nhập' : 'Chi Tiêu',
+            getCategoryName(t.type, t.category),
+            t.amount,
+            t.note || ''
+        ]);
+    });
+    
+    try {
+        // Tạo workbook
+        const wb = XLSX.utils.book_new();
+        
+        // Tạo worksheet
+        const wsSummary = XLSX.utils.aoa_to_sheet(summaryData);
+        const wsDetail = XLSX.utils.aoa_to_sheet(detailData);
+        
+        // Thiết lập độ rộng cột cho đẹp
+        wsSummary['!cols'] = [{ wch: 25 }, { wch: 20 }, { wch: 20 }];
+        wsDetail['!cols'] = [{ wch: 15 }, { wch: 15 }, { wch: 20 }, { wch: 20 }, { wch: 30 }];
+        
+        // Đưa các sheet vào workbook
+        XLSX.utils.book_append_sheet(wb, wsSummary, "Tổng Quan");
+        XLSX.utils.book_append_sheet(wb, wsDetail, "Chi Tiết Giao Dịch");
+        
+        // Xuất file
+        XLSX.writeFile(wb, `Bao_Cao_Tai_Chinh_${month}_${year}.xlsx`);
+    } catch (error) {
+        console.error("Lỗi xuất Excel:", error);
+        alert("Có lỗi xảy ra khi tạo file Excel: " + error.message);
+    }
+};
+
 // Events
 document.addEventListener('DOMContentLoaded', () => {
     // 1. Kiểm tra trạng thái xác thực ứng dụng
@@ -658,6 +763,12 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Lọc báo cáo
     document.getElementById('report-month-filter').addEventListener('change', updateCharts);
+
+    // Sự kiện nút Xuất Excel
+    const btnExportExcel = document.getElementById('btn-export-excel');
+    if (btnExportExcel) {
+        btnExportExcel.addEventListener('click', exportToExcel);
+    }
 
     // Xác thực báo cáo (Đã được xử lý toàn cục)
     isReportsAuthenticated = true;
