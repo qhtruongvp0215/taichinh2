@@ -431,10 +431,72 @@ const migrateLocalStorageToFirestore = async () => {
 
 // Events
 document.addEventListener('DOMContentLoaded', () => {
+    // 1. Kiểm tra trạng thái xác thực ứng dụng
+    const checkAppAuthentication = () => {
+        const isAuthenticated = localStorage.getItem('fin_app_authenticated') === 'true';
+        const loginScreen = document.getElementById('app-login-screen');
+        const appContainer = document.querySelector('.app-container');
+        
+        if (isAuthenticated) {
+            if (loginScreen) loginScreen.style.display = 'none';
+            if (appContainer) appContainer.style.display = 'flex';
+            
+            // Tự động bỏ qua xác thực báo cáo vì đã đăng nhập vào hệ thống
+            const reportsLogin = document.getElementById('reports-login-container');
+            const reportsContent = document.getElementById('reports-content-container');
+            if (reportsLogin) reportsLogin.style.display = 'none';
+            if (reportsContent) reportsContent.style.display = 'block';
+            isReportsAuthenticated = true;
+        } else {
+            if (loginScreen) loginScreen.style.display = 'flex';
+            if (appContainer) appContainer.style.display = 'none';
+        }
+    };
+
+    // Chạy kiểm tra đăng nhập ngay lập tức
+    checkAppAuthentication();
+
+    // Xử lý sự kiện đăng nhập
+    const appLoginForm = document.getElementById('app-login-form');
+    if (appLoginForm) {
+        appLoginForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const username = document.getElementById('app-username').value;
+            const password = document.getElementById('app-password').value;
+            const loginError = document.getElementById('app-login-error');
+            
+            if (username === 'nguyenanh2021' && password === 'hokt1111') {
+                localStorage.setItem('fin_app_authenticated', 'true');
+                if (loginError) loginError.style.display = 'none';
+                checkAppAuthentication();
+                updateCharts();
+            } else {
+                if (loginError) {
+                    loginError.style.display = 'block';
+                    loginError.textContent = 'Tài khoản hoặc mật khẩu không chính xác!';
+                }
+            }
+        });
+    }
+
+    // Xử lý sự kiện đăng xuất
+    const btnLogout = document.getElementById('btn-logout');
+    if (btnLogout) {
+        btnLogout.addEventListener('click', () => {
+            if (confirm('Bạn có chắc chắn muốn đăng xuất không?')) {
+                localStorage.removeItem('fin_app_authenticated');
+                window.location.reload();
+            }
+        });
+    }
+
     // Tab Navigation
     document.querySelectorAll('.nav-links li').forEach(li => {
         li.addEventListener('click', (e) => {
             switchTab(e.currentTarget.dataset.tab);
+            if (e.currentTarget.dataset.tab === 'reports') {
+                updateCharts();
+            }
         });
     });
 
@@ -517,24 +579,8 @@ document.addEventListener('DOMContentLoaded', () => {
     // Lọc báo cáo
     document.getElementById('report-month-filter').addEventListener('change', updateCharts);
 
-    // Xác thực báo cáo
-    const reportsLoginForm = document.getElementById('reports-login-form');
-    if (reportsLoginForm) {
-        reportsLoginForm.addEventListener('submit', (e) => {
-            e.preventDefault();
-            const user = document.getElementById('login-username').value;
-            const pass = document.getElementById('login-password').value;
-            
-            if (user === 'nguyenanh2021' && pass === 'hokt1111') {
-                isReportsAuthenticated = true;
-                document.getElementById('reports-login-container').style.display = 'none';
-                document.getElementById('reports-content-container').style.display = 'block';
-                updateCharts(); // Vẽ lại biểu đồ khi hiển thị
-            } else {
-                document.getElementById('login-error').style.display = 'block';
-            }
-        });
-    }
+    // Xác thực báo cáo (Đã được xử lý toàn cục)
+    isReportsAuthenticated = true;
 
     // Kiểm tra dữ liệu được chia sẻ từ URL
     const urlParams = new URLSearchParams(window.location.search);
