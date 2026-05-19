@@ -126,7 +126,7 @@
                 <section id="income" class="tab-content">
                     <div class="transactions-layout">
                         <div class="form-container card">
-                            <h2>Thêm Khoản Thu</h2>
+                            <h2 id="income-form-title">Thêm Khoản Thu</h2>
                             <form id="income-form">
                                 <div class="form-group">
                                     <label for="income-amount">Số tiền</label>
@@ -151,8 +151,12 @@
                                     <input type="text" id="income-note" placeholder="VD: Lương tháng 5">
                                 </div>
 
-                                <button type="submit" class="btn-primary"
-                                    style="background-color: var(--color-income);">Lưu Khoản Thu</button>
+                                <div style="display: flex; gap: 0.5rem; width: 100%;">
+                                    <button type="submit" id="income-submit-btn" class="btn-primary"
+                                        style="background-color: var(--color-income); flex: 2;">Lưu Khoản Thu</button>
+                                    <button type="button" id="income-cancel-btn" class="btn-primary"
+                                        style="background-color: var(--text-muted); flex: 1; display: none;">Hủy</button>
+                                </div>
                             </form>
                         </div>
 
@@ -186,7 +190,7 @@
                 <section id="expense" class="tab-content">
                     <div class="transactions-layout">
                         <div class="form-container card">
-                            <h2>Thêm Khoản Chi</h2>
+                            <h2 id="expense-form-title">Thêm Khoản Chi</h2>
                             <form id="expense-form">
                                 <div class="form-group">
                                     <label for="expense-amount">Số tiền</label>
@@ -211,8 +215,12 @@
                                     <input type="text" id="expense-note" placeholder="VD: Mua thức ăn tối">
                                 </div>
 
-                                <button type="submit" class="btn-primary"
-                                    style="background-color: var(--color-expense);">Lưu Khoản Chi</button>
+                                <div style="display: flex; gap: 0.5rem; width: 100%;">
+                                    <button type="submit" id="expense-submit-btn" class="btn-primary"
+                                        style="background-color: var(--color-expense); flex: 2;">Lưu Khoản Chi</button>
+                                    <button type="button" id="expense-cancel-btn" class="btn-primary"
+                                        style="background-color: var(--text-muted); flex: 1; display: none;">Hủy</button>
+                                </div>
                             </form>
                         </div>
 

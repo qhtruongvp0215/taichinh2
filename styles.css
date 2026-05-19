@@ -640,3 +640,19 @@ body {
     transform: translateY(0);
 }
 
+/* Nút Sửa Giao Dịch */
+.btn-edit {
+    background: none;
+    border: none;
+    color: var(--accent-primary);
+    cursor: pointer;
+    padding: 0.5rem;
+    border-radius: var(--radius-md);
+    transition: background-color 0.2s;
+}
+
+.btn-edit:hover {
+    background-color: rgba(99, 102, 241, 0.1);
+}
+
+

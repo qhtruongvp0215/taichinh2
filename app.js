@@ -40,6 +40,7 @@ let transactions = [];
 let currentTab = 'dashboard';
 let charts = {}; // Lưu trữ instance của Chart.js
 let isReportsAuthenticated = false; // Trạng thái đăng nhập Báo cáo
+let editingTransactionId = null; // ID của giao dịch đang được chỉnh sửa
 
 // Format tiền tệ Việt Nam
 const formatCurrency = (amount) => {
@@ -169,7 +170,10 @@ const renderTransactionTables = () => {
                 <td>${t.note || '-'}</td>
                 <td class="text-right t-amount ${t.type}">${sign}${formatCurrency(t.amount)}</td>
                 <td>
-                    <button class="btn-delete" onclick="deleteTransaction('${t.id}')">
+                    <button class="btn-edit" onclick="editTransaction('${t.id}')" title="Sửa">
+                        <i class="fa-solid fa-pen-to-square"></i>
+                    </button>
+                    <button class="btn-delete" onclick="deleteTransaction('${t.id}')" title="Xóa">
                         <i class="fa-solid fa-trash"></i>
                     </button>
                 </td>
@@ -182,6 +186,11 @@ const renderTransactionTables = () => {
 // Xóa giao dịch
 window.deleteTransaction = (id) => {
     if (confirm('Bạn có chắc chắn muốn xóa giao dịch này?')) {
+        // Nếu đang sửa chính giao dịch này thì hủy sửa trước khi xóa
+        if (editingTransactionId === id) {
+            const t = transactions.find(item => item.id === id);
+            if (t) cancelEditing(t.type);
+        }
         db.collection('transactions').doc(id).delete()
             .then(() => {
                 console.log("Đã xóa giao dịch khỏi Firestore:", id);
@@ -191,6 +200,66 @@ window.deleteTransaction = (id) => {
                 alert("Lỗi khi xóa giao dịch: " + error.message);
             });
     }
+};
+
+// Thiết lập trạng thái sửa giao dịch
+window.editTransaction = (id) => {
+    const t = transactions.find(item => item.id === id);
+    if (!t) return;
+    
+    editingTransactionId = id;
+    const type = t.type;
+    
+    // Điền dữ liệu vào form
+    const amountInput = document.getElementById(type + '-amount');
+    const categorySelect = document.getElementById(type + '-category');
+    const dateInput = document.getElementById(type + '-date');
+    const noteInput = document.getElementById(type + '-note');
+    
+    if (amountInput) amountInput.value = new Intl.NumberFormat('en-US').format(t.amount);
+    if (categorySelect) categorySelect.value = t.category;
+    if (dateInput) dateInput.value = t.date;
+    if (noteInput) noteInput.value = t.note || '';
+    
+    // Đổi tiêu đề form & nút lưu
+    const formTitle = document.getElementById(type + '-form-title');
+    const submitBtn = document.getElementById(type + '-submit-btn');
+    const cancelBtn = document.getElementById(type + '-cancel-btn');
+    
+    if (formTitle) formTitle.textContent = type === 'income' ? 'Sửa Khoản Thu' : 'Sửa Khoản Chi';
+    if (submitBtn) submitBtn.textContent = type === 'income' ? 'Cập Nhật Thu' : 'Cập Nhật Chi';
+    if (cancelBtn) cancelBtn.style.display = 'block';
+    
+    // Cuộn lên đầu form nếu trên di động
+    const formContainer = amountInput.closest('.form-container');
+    if (formContainer) {
+        formContainer.scrollIntoView({ behavior: 'smooth' });
+    }
+};
+
+// Hủy trạng thái sửa giao dịch
+window.cancelEditing = (type) => {
+    editingTransactionId = null;
+    
+    // Reset form
+    const amountInput = document.getElementById(type + '-amount');
+    const categorySelect = document.getElementById(type + '-category');
+    const dateInput = document.getElementById(type + '-date');
+    const noteInput = document.getElementById(type + '-note');
+    
+    if (amountInput) amountInput.value = '';
+    if (categorySelect) categorySelect.selectedIndex = 0;
+    if (dateInput) dateInput.valueAsDate = new Date();
+    if (noteInput) noteInput.value = '';
+    
+    // Reset tiêu đề form & nút lưu
+    const formTitle = document.getElementById(type + '-form-title');
+    const submitBtn = document.getElementById(type + '-submit-btn');
+    const cancelBtn = document.getElementById(type + '-cancel-btn');
+    
+    if (formTitle) formTitle.textContent = type === 'income' ? 'Thêm Khoản Thu' : 'Thêm Khoản Chi';
+    if (submitBtn) submitBtn.textContent = type === 'income' ? 'Lưu Khoản Thu' : 'Lưu Khoản Chi';
+    if (cancelBtn) cancelBtn.style.display = 'none';
 };
 
 // Cập nhật dropdown chọn tháng cho Thu và Chi
@@ -522,8 +591,9 @@ document.addEventListener('DOMContentLoaded', () => {
     if(incomeForm) {
         incomeForm.addEventListener('submit', (e) => {
             e.preventDefault();
+            const isEdit = !!editingTransactionId;
             const newTx = {
-                id: Date.now().toString(),
+                id: editingTransactionId || Date.now().toString(),
                 type: 'income',
                 amount: parseFloat(document.getElementById('income-amount').value.replace(/,/g, '')),
                 category: document.getElementById('income-category').value,
@@ -532,13 +602,12 @@ document.addEventListener('DOMContentLoaded', () => {
             };
             db.collection('transactions').doc(newTx.id).set(newTx)
                 .then(() => {
-                    document.getElementById('income-amount').value = '';
-                    document.getElementById('income-note').value = '';
-                    alert('Đã thêm khoản thu thành công!');
+                    cancelEditing('income');
+                    alert(isEdit ? 'Đã cập nhật khoản thu thành công!' : 'Đã thêm khoản thu thành công!');
                 })
                 .catch(error => {
-                    console.error("Lỗi thêm khoản thu:", error);
-                    alert("Lỗi thêm khoản thu: " + error.message);
+                    console.error("Lỗi lưu khoản thu:", error);
+                    alert("Lỗi lưu khoản thu: " + error.message);
                 });
         });
     }
@@ -548,8 +617,9 @@ document.addEventListener('DOMContentLoaded', () => {
     if(expenseForm) {
         expenseForm.addEventListener('submit', (e) => {
             e.preventDefault();
+            const isEdit = !!editingTransactionId;
             const newTx = {
-                id: Date.now().toString(),
+                id: editingTransactionId || Date.now().toString(),
                 type: 'expense',
                 amount: parseFloat(document.getElementById('expense-amount').value.replace(/,/g, '')),
                 category: document.getElementById('expense-category').value,
@@ -558,15 +628,25 @@ document.addEventListener('DOMContentLoaded', () => {
             };
             db.collection('transactions').doc(newTx.id).set(newTx)
                 .then(() => {
-                    document.getElementById('expense-amount').value = '';
-                    document.getElementById('expense-note').value = '';
-                    alert('Đã thêm khoản chi thành công!');
+                    cancelEditing('expense');
+                    alert(isEdit ? 'Đã cập nhật khoản chi thành công!' : 'Đã thêm khoản chi thành công!');
                 })
                 .catch(error => {
-                    console.error("Lỗi thêm khoản chi:", error);
-                    alert("Lỗi thêm khoản chi: " + error.message);
+                    console.error("Lỗi lưu khoản chi:", error);
+                    alert("Lỗi lưu khoản chi: " + error.message);
                 });
         });
+    }
+
+    // Sự kiện nút Hủy sửa
+    const incomeCancelBtn = document.getElementById('income-cancel-btn');
+    if (incomeCancelBtn) {
+        incomeCancelBtn.addEventListener('click', () => cancelEditing('income'));
+    }
+    
+    const expenseCancelBtn = document.getElementById('expense-cancel-btn');
+    if (expenseCancelBtn) {
+        expenseCancelBtn.addEventListener('click', () => cancelEditing('expense'));
     }
 
     // Lọc bảng giao dịch
