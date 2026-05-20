@@ -297,7 +297,50 @@
                     </div>
                 </section>
             </div>
-        </main>
+        <!-- Chatbot Gemini -->
+        <div class="chatbot-widget">
+            <button id="chatbot-toggle-btn" class="chatbot-toggle-btn" title="Hỏi đáp với Gemini">
+                <i class="fa-solid fa-robot"></i>
+            </button>
+            <div id="chatbot-window" class="chatbot-window">
+                <div class="chatbot-header">
+                    <div class="chatbot-title">
+                        <i class="fa-solid fa-robot"></i>
+                        <span>Trợ lý tài chính (Gemini)</span>
+                    </div>
+                    <div class="chatbot-header-actions">
+                        <button id="chatbot-settings-btn" title="Cài đặt API Key"><i class="fa-solid fa-gear"></i></button>
+                        <button id="chatbot-close-btn" title="Đóng"><i class="fa-solid fa-xmark"></i></button>
+                    </div>
+                </div>
+                
+                <!-- Screen: Setup API Key -->
+                <div id="chatbot-setup-screen" class="chatbot-body chatbot-setup">
+                    <div style="text-align: center; margin-bottom: 1rem; color: var(--accent-primary); font-size: 2rem;">
+                        <i class="fa-solid fa-key"></i>
+                    </div>
+                    <h3 style="text-align: center; margin-bottom: 0.5rem;">Cài đặt API Key</h3>
+                    <p style="text-align: center; font-size: 0.875rem; color: var(--text-muted); margin-bottom: 1.5rem;">Vui lòng nhập Google Gemini API Key để sử dụng. Mã này chỉ lưu trên trình duyệt của bạn.</p>
+                    <input type="password" id="chatbot-api-key-input" placeholder="Nhập API Key..." class="chatbot-input-field">
+                    <button id="chatbot-save-key-btn" class="btn-primary" style="margin-top: 1rem; font-size: 0.875rem; padding: 0.6rem;">Lưu API Key</button>
+                    <p class="chatbot-help-text" style="text-align: center; margin-top: 1rem; font-size: 0.75rem;"><a href="https://aistudio.google.com/app/apikey" target="_blank" style="color: var(--accent-primary); text-decoration: none;">Lấy API Key tại đây</a></p>
+                </div>
+
+                <!-- Screen: Chat -->
+                <div id="chatbot-chat-screen" class="chatbot-body" style="display: none;">
+                    <div id="chatbot-messages" class="chatbot-messages">
+                        <div class="chatbot-message assistant">
+                            <div class="msg-avatar"><i class="fa-solid fa-robot"></i></div>
+                            <div class="msg-content">Chào bạn! Tôi là trợ lý tài chính AI. Dựa vào dữ liệu thu chi, tôi có thể tư vấn giúp bạn. Bạn muốn hỏi gì?</div>
+                        </div>
+                    </div>
+                    <div class="chatbot-input-area">
+                        <textarea id="chatbot-input" placeholder="Hỏi tôi về tài chính của bạn..." rows="1"></textarea>
+                        <button id="chatbot-send-btn" title="Gửi"><i class="fa-solid fa-paper-plane"></i></button>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -308,6 +351,8 @@
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-analytics-compat.js"></script>
     <!-- SheetJS to export Excel -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <!-- Marked.js for Markdown -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <script src="app.js?v=3"></script>
 </body>
 

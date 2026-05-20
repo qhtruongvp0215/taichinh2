@@ -889,4 +889,191 @@ document.addEventListener('DOMContentLoaded', () => {
         .finally(() => {
             initFirestoreSync();
         });
+
+    // ==========================================
+    // CHATBOT GEMINI INTEGRATION
+    // ==========================================
+    const chatbotToggleBtn = document.getElementById('chatbot-toggle-btn');
+    const chatbotWindow = document.getElementById('chatbot-window');
+    const chatbotCloseBtn = document.getElementById('chatbot-close-btn');
+    const chatbotSettingsBtn = document.getElementById('chatbot-settings-btn');
+    
+    const setupScreen = document.getElementById('chatbot-setup-screen');
+    const chatScreen = document.getElementById('chatbot-chat-screen');
+    
+    const apiKeyInput = document.getElementById('chatbot-api-key-input');
+    const saveKeyBtn = document.getElementById('chatbot-save-key-btn');
+    
+    const chatInput = document.getElementById('chatbot-input');
+    const sendBtn = document.getElementById('chatbot-send-btn');
+    const messagesContainer = document.getElementById('chatbot-messages');
+    
+    let geminiApiKey = localStorage.getItem('fin_gemini_api_key');
+    let isChatbotOpen = false;
+
+    // Toggle Chatbot
+    const toggleChatbot = () => {
+        isChatbotOpen = !isChatbotOpen;
+        if (isChatbotOpen) {
+            chatbotWindow.classList.add('open');
+            checkApiKey();
+        } else {
+            chatbotWindow.classList.remove('open');
+        }
+    };
+
+    if(chatbotToggleBtn) chatbotToggleBtn.addEventListener('click', toggleChatbot);
+    if(chatbotCloseBtn) chatbotCloseBtn.addEventListener('click', () => {
+        isChatbotOpen = false;
+        chatbotWindow.classList.remove('open');
+    });
+
+    // API Key Management
+    const checkApiKey = () => {
+        geminiApiKey = localStorage.getItem('fin_gemini_api_key');
+        if (geminiApiKey) {
+            setupScreen.style.display = 'none';
+            chatScreen.style.display = 'flex';
+            setTimeout(() => chatInput.focus(), 300);
+        } else {
+            setupScreen.style.display = 'flex';
+            chatScreen.style.display = 'none';
+            setTimeout(() => apiKeyInput.focus(), 300);
+        }
+    };
+
+    if(saveKeyBtn) saveKeyBtn.addEventListener('click', () => {
+        const key = apiKeyInput.value.trim();
+        if (key) {
+            localStorage.setItem('fin_gemini_api_key', key);
+            checkApiKey();
+        }
+    });
+    
+    if(chatbotSettingsBtn) chatbotSettingsBtn.addEventListener('click', () => {
+        localStorage.removeItem('fin_gemini_api_key');
+        apiKeyInput.value = '';
+        checkApiKey();
+    });
+
+    // Chat Logic
+    const appendMessage = (role, content) => {
+        const msgDiv = document.createElement('div');
+        msgDiv.className = `chatbot-message ${role}`;
+        
+        const avatar = role === 'user' ? '<i class="fa-solid fa-user"></i>' : '<i class="fa-solid fa-robot"></i>';
+        
+        let displayContent = content;
+        if (role === 'assistant' && typeof marked !== 'undefined') {
+            displayContent = marked.parse(content);
+        }
+
+        msgDiv.innerHTML = `
+            <div class="msg-avatar">${avatar}</div>
+            <div class="msg-content">${displayContent}</div>
+        `;
+        messagesContainer.appendChild(msgDiv);
+        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    };
+
+    const appendTypingIndicator = () => {
+        const msgDiv = document.createElement('div');
+        msgDiv.className = `chatbot-message assistant typing-msg`;
+        msgDiv.innerHTML = `
+            <div class="msg-avatar"><i class="fa-solid fa-robot"></i></div>
+            <div class="msg-content">
+                <div class="typing-indicator">
+                    <div class="typing-dot"></div>
+                    <div class="typing-dot"></div>
+                    <div class="typing-dot"></div>
+                </div>
+            </div>
+        `;
+        messagesContainer.appendChild(msgDiv);
+        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        return msgDiv;
+    };
+
+    const buildContextPrompt = () => {
+        const summary = calculateSummary();
+        return `Bạn là một trợ lý tài chính gia đình thông minh, thân thiện. 
+Dưới đây là tóm tắt tình hình tài chính của người dùng hiện tại:
+- Tổng số dư: ${formatCurrency(summary.totalBalance)}
+- Tổng thu tháng này: ${formatCurrency(summary.monthIncome)}
+- Tổng chi tháng này: ${formatCurrency(summary.monthExpense)}
+
+Hãy trả lời ngắn gọn, dễ hiểu và đưa ra lời khuyên hữu ích dựa trên ngữ cảnh này. Đóng vai là trợ lý xưng hô là "tôi" và gọi người dùng là "bạn". Sử dụng markdown để định dạng văn bản (danh sách, in đậm) cho đẹp mắt.`;
+    };
+
+    const sendMessageToGemini = async (text) => {
+        if (!geminiApiKey) return;
+        
+        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiApiKey}`;
+        
+        const payload = {
+            contents: [
+                {
+                    role: "user",
+                    parts: [
+                        { text: buildContextPrompt() },
+                        { text: text }
+                    ]
+                }
+            ],
+            generationConfig: {
+                temperature: 0.7,
+                maxOutputTokens: 1024,
+            }
+        };
+
+        try {
+            const response = await fetch(apiUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            if (!response.ok) {
+                if(response.status === 400) throw new Error("API Key không hợp lệ hoặc lỗi request.");
+                throw new Error(`Lỗi HTTP: ${response.status}`);
+            }
+
+            const data = await response.json();
+            const reply = data.candidates[0].content.parts[0].text;
+            return reply;
+        } catch (error) {
+            console.error("Gemini API Error:", error);
+            return `Xin lỗi, có lỗi xảy ra: ${error.message}. Vui lòng kiểm tra lại kết nối mạng hoặc API Key (bấm vào biểu tượng cài đặt phía trên để nhập lại).`;
+        }
+    };
+
+    const handleSendMsg = async () => {
+        const text = chatInput.value.trim();
+        if (!text) return;
+        
+        // Disable input
+        chatInput.value = '';
+        chatInput.disabled = true;
+        sendBtn.disabled = true;
+        
+        appendMessage('user', text);
+        const typingIndicator = appendTypingIndicator();
+        
+        const replyText = await sendMessageToGemini(text);
+        
+        typingIndicator.remove();
+        appendMessage('assistant', replyText);
+        
+        chatInput.disabled = false;
+        sendBtn.disabled = false;
+        chatInput.focus();
+    };
+
+    if(sendBtn) sendBtn.addEventListener('click', handleSendMsg);
+    if(chatInput) chatInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            handleSendMsg();
+        }
+    });
 });
