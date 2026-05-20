@@ -909,38 +909,20 @@ document.addEventListener('DOMContentLoaded', () => {
     const messagesContainer = document.getElementById('chatbot-messages');
     
     let geminiApiKey = localStorage.getItem('fin_gemini_api_key');
-    let isChatbotOpen = false;
-
-    // Toggle Chatbot
-    const toggleChatbot = () => {
-        isChatbotOpen = !isChatbotOpen;
-        if (isChatbotOpen) {
-            chatbotWindow.classList.add('open');
-            checkApiKey();
-        } else {
-            chatbotWindow.classList.remove('open');
-        }
-    };
-
-    if(chatbotToggleBtn) chatbotToggleBtn.addEventListener('click', toggleChatbot);
-    if(chatbotCloseBtn) chatbotCloseBtn.addEventListener('click', () => {
-        isChatbotOpen = false;
-        chatbotWindow.classList.remove('open');
-    });
 
     // API Key Management
     const checkApiKey = () => {
+        if (!setupScreen || !chatScreen) return;
         geminiApiKey = localStorage.getItem('fin_gemini_api_key');
         if (geminiApiKey) {
             setupScreen.style.display = 'none';
             chatScreen.style.display = 'flex';
-            setTimeout(() => chatInput.focus(), 300);
         } else {
             setupScreen.style.display = 'flex';
             chatScreen.style.display = 'none';
-            setTimeout(() => apiKeyInput.focus(), 300);
         }
     };
+    checkApiKey();
 
     if(saveKeyBtn) saveKeyBtn.addEventListener('click', () => {
         const key = apiKeyInput.value.trim();
