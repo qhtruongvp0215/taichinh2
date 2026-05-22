@@ -557,7 +557,7 @@ const migrateLocalStorageToFirestore = async () => {
 };
 
 // Xuất báo cáo Excel
-const exportToExcel = () => {
+const exportToExcel = async () => {
     const filterVal = document.getElementById('report-month-filter').value; // YYYY-MM
     if (!filterVal) {
         alert('Vui lòng chọn tháng báo cáo để xuất!');
@@ -578,83 +578,234 @@ const exportToExcel = () => {
     // Tính toán chỉ số của tháng
     const summary = calculateSummary(filterVal);
     
-    // Sheet 1: Tổng Quan (Summary)
-    const summaryData = [
-        ["BÁO CÁO TÀI CHÍNH THÁNG " + month + "/" + year],
-        [],
-        ["Chỉ Số Tổng Quan", "Số Tiền (VND)"],
-        ["Tổng Thu Nhập", summary.monthIncome],
-        ["Tổng Chi Tiêu", summary.monthExpense],
-        ["Thặng Dư (Số Dư)", summary.monthIncome - summary.monthExpense],
-        [],
-        ["PHÂN TÍCH CHI TIẾT THEO DANH MỤC"],
-        ["Loại Giao Dịch", "Danh Mục", "Số Tiền (VND)"]
-    ];
-    
-    // Chi tiết danh mục Thu
-    let hasIncomeCat = false;
-    CATEGORIES.income.forEach(cat => {
-        const amt = filteredTxs.filter(t => t.type === 'income' && t.category === cat.id)
-            .reduce((sum, t) => sum + t.amount, 0);
-        if (amt > 0) {
-            summaryData.push(["Thu Nhập", cat.name, amt]);
-            hasIncomeCat = true;
-        }
-    });
-    if (!hasIncomeCat) {
-        summaryData.push(["Thu Nhập", "(Không có)", 0]);
-    }
-    
-    // Chi tiết danh mục Chi
-    let hasExpenseCat = false;
-    CATEGORIES.expense.forEach(cat => {
-        const amt = filteredTxs.filter(t => t.type === 'expense' && t.category === cat.id)
-            .reduce((sum, t) => sum + t.amount, 0);
-        if (amt > 0) {
-            summaryData.push(["Chi Tiêu", cat.name, amt]);
-            hasExpenseCat = true;
-        }
-    });
-    if (!hasExpenseCat) {
-        summaryData.push(["Chi Tiêu", "(Không có)", 0]);
-    }
-    
-    // Sheet 2: Danh Sách Giao Dịch (Detail Transactions)
-    const detailHeaders = ["Ngày Giao Dịch", "Loại Giao Dịch", "Danh Mục", "Số Tiền (VND)", "Ghi Chú"];
-    const detailData = [
-        ["DANH SÁCH CHI TIẾT GIAO DỊCH - THÁNG " + month + "/" + year],
-        [],
-        detailHeaders
-    ];
-    
-    filteredTxs.forEach(t => {
-        detailData.push([
-            t.date,
-            t.type === 'income' ? 'Thu Nhập' : 'Chi Tiêu',
-            getCategoryName(t.type, t.category),
-            t.amount,
-            t.note || ''
-        ]);
-    });
-    
     try {
-        // Tạo workbook
-        const wb = XLSX.utils.book_new();
+        const wb = new ExcelJS.Workbook();
+        const ws = wb.addWorksheet('Tổng Quan');
         
-        // Tạo worksheet
-        const wsSummary = XLSX.utils.aoa_to_sheet(summaryData);
-        const wsDetail = XLSX.utils.aoa_to_sheet(detailData);
+        // --- 1. Tạo Bảng Tổng Quan bên trái ---
+        ws.mergeCells('A1:C1');
+        const titleCell = ws.getCell('A1');
+        titleCell.value = `BÁO CÁO TÀI CHÍNH THÁNG ${month}/${year}`;
+        titleCell.font = { name: 'Calibri', size: 12, bold: true };
         
-        // Thiết lập độ rộng cột cho đẹp
-        wsSummary['!cols'] = [{ wch: 25 }, { wch: 20 }, { wch: 20 }];
-        wsDetail['!cols'] = [{ wch: 15 }, { wch: 15 }, { wch: 20 }, { wch: 20 }, { wch: 30 }];
+        ws.getColumn('A').width = 20; 
+        ws.getColumn('B').width = 25; 
+        ws.getColumn('C').width = 20; 
         
-        // Đưa các sheet vào workbook
-        XLSX.utils.book_append_sheet(wb, wsSummary, "Tổng Quan");
-        XLSX.utils.book_append_sheet(wb, wsDetail, "Chi Tiết Giao Dịch");
+        ws.mergeCells('A3:B3');
+        ws.getCell('A3').value = 'Chỉ Số Tổng Quan';
+        ws.getCell('C3').value = 'Số Tiền (VND)';
         
-        // Xuất file
-        XLSX.writeFile(wb, `Bao_Cao_Tai_Chinh_${month}_${year}.xlsx`);
+        ws.mergeCells('A4:B4');
+        ws.getCell('A4').value = 'Tổng Thu Nhập';
+        ws.getCell('C4').value = summary.monthIncome;
+        
+        ws.mergeCells('A5:B5');
+        ws.getCell('A5').value = 'Tổng Chi Tiêu';
+        ws.getCell('C5').value = summary.monthExpense;
+        
+        ws.mergeCells('A6:B6');
+        ws.getCell('A6').value = 'Thặng Dư (Số Dư)';
+        ws.getCell('C6').value = summary.monthIncome - summary.monthExpense;
+        
+        ws.mergeCells('A8:C8');
+        ws.getCell('A8').value = 'PHÂN TÍCH CHI TIẾT THEO DANH MỤC';
+        
+        ws.getCell('A9').value = 'Loại Giao Dịch';
+        ws.getCell('B9').value = 'Danh Mục';
+        ws.getCell('C9').value = 'Số Tiền (VND)';
+        
+        let currentRow = 10;
+        
+        const chartLabels = [];
+        const chartData = [];
+        
+        // Chi tiết danh mục Thu
+        CATEGORIES.income.forEach(cat => {
+            const amt = filteredTxs.filter(t => t.type === 'income' && t.category === cat.id)
+                .reduce((sum, t) => sum + t.amount, 0);
+            if (amt > 0) {
+                ws.getCell(`A${currentRow}`).value = 'Thu Nhập';
+                ws.getCell(`B${currentRow}`).value = cat.name;
+                ws.getCell(`C${currentRow}`).value = amt;
+                chartLabels.push(cat.name);
+                chartData.push(amt);
+                currentRow++;
+            }
+        });
+        
+        // Chi tiết danh mục Chi
+        CATEGORIES.expense.forEach(cat => {
+            const amt = filteredTxs.filter(t => t.type === 'expense' && t.category === cat.id)
+                .reduce((sum, t) => sum + t.amount, 0);
+            if (amt > 0) {
+                ws.getCell(`A${currentRow}`).value = 'Chi Tiêu';
+                ws.getCell(`B${currentRow}`).value = cat.name;
+                ws.getCell(`C${currentRow}`).value = amt;
+                chartLabels.push(cat.name);
+                chartData.push(amt);
+                currentRow++;
+            }
+        });
+        
+        const borderStyle = {
+            top: {style:'thin'}, left: {style:'thin'}, bottom: {style:'thin'}, right: {style:'thin'}
+        };
+        
+        // Format A3:C6
+        for (let r = 3; r <= 6; r++) {
+            for (let c = 1; c <= 3; c++) {
+                const cell = ws.getCell(r, c);
+                cell.border = borderStyle;
+                if (r === 3) {
+                    cell.font = { name: 'Calibri', size: 11, bold: true };
+                } else {
+                    cell.font = { name: 'Calibri', size: 11 };
+                }
+                if (c === 3 && r > 3) {
+                    cell.numFmt = '#,##0';
+                }
+            }
+        }
+        
+        // Format A8:C{currentRow-1}
+        ws.getCell('A8').font = { name: 'Calibri', size: 11, bold: true };
+        for (let r = 9; r < currentRow; r++) {
+            for (let c = 1; c <= 3; c++) {
+                const cell = ws.getCell(r, c);
+                cell.border = borderStyle;
+                if (r === 9) {
+                    cell.font = { name: 'Calibri', size: 11, bold: true };
+                    cell.alignment = { horizontal: 'center' };
+                } else {
+                    cell.font = { name: 'Calibri', size: 11 };
+                }
+                if (c === 3 && r > 9) {
+                    cell.numFmt = '#,##0';
+                }
+            }
+        }
+        
+        // --- 2. Tạo Biểu Đồ Bằng Chart.js và chèn Ảnh ---
+        const canvas = document.createElement('canvas');
+        canvas.width = 600;
+        canvas.height = 350;
+        document.body.appendChild(canvas);
+        
+        const ctx = canvas.getContext('2d');
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        
+        new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: chartLabels,
+                datasets: [{
+                    data: chartData,
+                    backgroundColor: '#4472c4', 
+                    barPercentage: 0.4
+                }]
+            },
+            options: {
+                animation: false,
+                devicePixelRatio: 2, 
+                plugins: {
+                    legend: { display: false },
+                    title: {
+                        display: true,
+                        text: 'Các nguồn thu - chi',
+                        font: { size: 16, family: 'Calibri' },
+                        color: '#595959',
+                        padding: { bottom: 20 }
+                    },
+                    datalabels: {
+                        display: true,
+                        anchor: 'end',
+                        align: 'top',
+                        color: '#595959',
+                        font: { family: 'Calibri', size: 10, weight: 'bold' },
+                        formatter: function(value) {
+                            if(value === 0) return '';
+                            return new Intl.NumberFormat('en-US').format(value);
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        grace: '15%', 
+                        ticks: {
+                            color: '#595959',
+                            font: { family: 'Calibri', size: 10 },
+                            callback: function(value) {
+                                return new Intl.NumberFormat('en-US').format(value);
+                            }
+                        },
+                        grid: { color: '#d9d9d9', drawBorder: false },
+                        border: { display: false }
+                    },
+                    x: {
+                        ticks: {
+                            color: '#595959',
+                            font: { family: 'Calibri', size: 11 }
+                        },
+                        grid: { display: false },
+                        border: { color: '#8c8c8c' }
+                    }
+                }
+            }
+        });
+        
+        const imgData = canvas.toDataURL('image/png');
+        document.body.removeChild(canvas); 
+        
+        const imageId = wb.addImage({
+            base64: imgData,
+            extension: 'png',
+        });
+        
+        // E2:M17
+        ws.addImage(imageId, 'E2:M17');
+        
+        // --- 3. Sheet 2: Danh Sách Giao Dịch ---
+        const wsDetail = wb.addWorksheet('Chi Tiết Giao Dịch');
+        wsDetail.getColumn('A').width = 15;
+        wsDetail.getColumn('B').width = 15;
+        wsDetail.getColumn('C').width = 20;
+        wsDetail.getColumn('D').width = 20;
+        wsDetail.getColumn('E').width = 30;
+        
+        wsDetail.mergeCells('A1:E1');
+        wsDetail.getCell('A1').value = `DANH SÁCH CHI TIẾT GIAO DỊCH - THÁNG ${month}/${year}`;
+        wsDetail.getCell('A1').font = { name: 'Calibri', bold: true, size: 12 };
+        
+        wsDetail.getCell('A3').value = 'Ngày Giao Dịch';
+        wsDetail.getCell('B3').value = 'Loại Giao Dịch';
+        wsDetail.getCell('C3').value = 'Danh Mục';
+        wsDetail.getCell('D3').value = 'Số Tiền (VND)';
+        wsDetail.getCell('E3').value = 'Ghi Chú';
+        wsDetail.getRow(3).font = { name: 'Calibri', bold: true, size: 11 };
+        
+        let detailRow = 4;
+        filteredTxs.forEach(t => {
+            wsDetail.getCell(`A${detailRow}`).value = t.date;
+            wsDetail.getCell(`B${detailRow}`).value = t.type === 'income' ? 'Thu Nhập' : 'Chi Tiêu';
+            wsDetail.getCell(`C${detailRow}`).value = getCategoryName(t.type, t.category);
+            const amtCell = wsDetail.getCell(`D${detailRow}`);
+            amtCell.value = t.amount;
+            amtCell.numFmt = '#,##0';
+            wsDetail.getCell(`E${detailRow}`).value = t.note || '';
+            
+            for(let c=1; c<=5; c++) {
+                wsDetail.getCell(detailRow, c).font = { name: 'Calibri', size: 11 };
+            }
+            detailRow++;
+        });
+        
+        const buffer = await wb.xlsx.writeBuffer();
+        const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+        saveAs(blob, `Bao_Cao_Tai_Chinh_${month}_${year}.xlsx`);
+        
     } catch (error) {
         console.error("Lỗi xuất Excel:", error);
         alert("Có lỗi xảy ra khi tạo file Excel: " + error.message);
